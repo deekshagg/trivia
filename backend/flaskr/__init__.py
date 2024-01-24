@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, abort, jsonify
+from flask import Flask, request, abort, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import random
@@ -43,6 +43,36 @@ def create_app(active=True, test_config=None):
             })
 
 
+    @app.route('/categories/<int:category_id>/questions', methods=['GET'])
+    def get_category_questions(category_id):
+        try:
+            category = session.get(category_id)
+
+            if not category:
+                return jsonify({
+                    'success': False,
+                    'error': 'Category not found',
+                }), 404
+
+            questions = Question.query.filter(Question.category == category_id).all()
+
+            total_questions = [question.format() for question in questions]
+
+            return jsonify({
+                'success': True,
+                'questions': total_questions,
+                'totalQuestions': len(total_questions),
+                'currentCategory': category.type
+            })
+
+        except Exception as e:
+            print(e)
+            return jsonify({
+                'success': False,
+                'error': 'An error occurred while retrieving questions by category',
+            })
+
+
     @app.route('/questions', methods=['GET'])
     def get_questions():
         questions_per_page = 10
@@ -58,7 +88,8 @@ def create_app(active=True, test_config=None):
                         for question in questions]
 
         total_questions = Question.query.count()
-
+        if len(questions) == 0:
+            abort(404)
         categories = Category.query.all()
         categories_list = {category.id: category.type for category in categories}
 
@@ -75,17 +106,13 @@ def create_app(active=True, test_config=None):
     @app.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
         try:
-            question = Question.query.get(question_id)
+            question = Question.query.filter(Question.id == question_id).one_or_none()
             if question is None:
-                return jsonify({
-                    'success': False,
-                    'error': 'Question not found'
-                }), 404
+                abort(422)
             else:
                 question.delete()
                 total_questions = Question.query.count()
                 
-
             return jsonify({
                 'success': True,
                 'deleted': question_id,
@@ -135,9 +162,11 @@ def create_app(active=True, test_config=None):
 
             questions = Question.query.filter(Question.question.ilike(f'%{search_term}%')).all()
 
-            questions_list = [question.format()
-                                     for question in questions]
-
+            questions_list = [question.format() for question in questions]
+            
+            if len(questions_list) == 0:
+                    abort(422)
+                    
             return jsonify({
                 'success': True,
                 'questions': questions_list,
@@ -187,25 +216,23 @@ def create_app(active=True, test_config=None):
             cate_id = category.get('id') if category else None
             previous_questions = data.get('previous_questions', [])
             question = None
-
-            if cate_id:
+            
+            if cate_id == 0:
                 questions = Question.query.filter(
-                    ~Question.id.in_(previous_questions),
-                    Question.category == cate_id
+                    Question.id.notin_(previous_questions)
                 ).all()
             else:
                 questions = Question.query.filter(
-                    ~Question.id.in_(previous_questions)
+                    Question.id.notin_(previous_questions),
+                    Question.category == cate_id
                 ).all()
+                
+                
+            if len(questions) == 0:
+                abort(422)
 
             if questions:
                 question = random.choice(questions)
-
-            if not question:
-                return jsonify({
-                    'success': False,
-                    'error': 'No available questions for the specified criteria'
-                }), 404
 
             formatted_question = question.format()
 
@@ -237,7 +264,24 @@ def create_app(active=True, test_config=None):
             'message': 'Unable to process the request'
         }), 422
     
+    @app.errorhandler(405)
+    def not_found(error):
+        return (
+            jsonify({"success": False, "error": 405, "message": "method not allowed"}),
+            405,
+        )
+
+    @app.errorhandler(500)
+    def server_error(error):
+        return (
+            jsonify({"success": False, "error": 500, "message": "Internal Server Error"}),
+            500,
+        )
+    
+    
     return app
+
+    
 
 if __name__ == '__main__':
     app = create_app()
