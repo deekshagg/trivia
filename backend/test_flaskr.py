@@ -19,7 +19,11 @@ class TriviaTestCase(unittest.TestCase):
         self.database_path = 'postgresql://{}:{}@{}/{}'.format(
             DB_USER, DB_PASSWORD, DB_URI, self.database_name)
         setup_db(self.app, self.database_path)
-        self.new_question = {"question": "Hi", "answer": "Hello", "category": "1", "difficulty": "5"}
+        self.new_question = {
+            "question": "Hi",
+            "answer": "Hello",
+            "category": "1",
+            "difficulty": "5"}
 
     def tearDown(self):
         """Executed after reach test"""
@@ -31,7 +35,7 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data['success'], True)
-        
+
     def test_get_questions(self):
         response = self.client().get('/questions')
         data = json.loads(response.data)
@@ -62,13 +66,13 @@ class TriviaTestCase(unittest.TestCase):
             question = Question.query.filter(Question.id == 12).one_or_none()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['success'], False)
-        
+
     def test_422_delete_question(self):
         response = self.client().delete(f'/questions/300')
         data = json.loads(response.data)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data['success'], False)
-        
+
     def test_add_question(self):
         res = self.client().post('/questions', json=self.new_question)
         data = json.loads(res.data)
@@ -82,32 +86,55 @@ class TriviaTestCase(unittest.TestCase):
 
         self.assertEqual(res.status_code, 405)
         self.assertEqual(data['success'], False)
-        
+
     def test_search_question(self):
-        res = self.client().post('/questions/search', json={"searchTerm": "Which"})
+        res = self.client().post(
+            '/questions/search',
+            json={
+                "searchTerm": "Which"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
 
     def test_422_search_question(self):
-        res = self.client().post('/questions/search', json={"searchTerm": "searchTerm"})
+        res = self.client().post(
+            '/questions/search',
+            json={
+                "searchTerm": "searchTerm"})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], False)
-        
+
     def test_quizzes(self):
-        res = self.client().post('/quizzes', json={"previous_questions": [9, 15], "quiz_category": {"type": "Art","id": "1"}})
+        res = self.client().post(
+            '/quizzes',
+            json={
+                "previous_questions": [
+                    9,
+                    15],
+                "quiz_category": {
+                    "type": "Art",
+                    "id": "1"}})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
 
-    # Giving an invalid category id which doesn't exist in the DB table so it may fail.
-    
+    # Giving an invalid category id which doesn't exist in the DB table so it
+    # may fail.
+
     def test_fail_quiz_with_invalid_category(self):
-        res = self.client().post('/quizzes', json={"previous_questions": [9, 15], "quiz_category": {"type": "Art","id": "10"}})
+        res = self.client().post(
+            '/quizzes',
+            json={
+                "previous_questions": [
+                    9,
+                    15],
+                "quiz_category": {
+                    "type": "Art",
+                    "id": "10"}})
         data = json.loads(res.data)
 
         self.assertEqual(res.status_code, 200)
