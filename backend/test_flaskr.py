@@ -122,9 +122,6 @@ class TriviaTestCase(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(data['success'], True)
 
-    # Giving an invalid category id which doesn't exist in the DB table so it
-    # may fail.
-
     def test_fail_quiz_with_invalid_category(self):
         res = self.client().post(
             '/quizzes',
